@@ -1,0 +1,10 @@
+---
+title: "静夜思"
+author: "李白"
+form: "五言绝句"
+tag: "思乡"
+coverImage: "/images/jing-ye-si.png"
+---
+
+床前明月光，疑是地上霜。
+举头望明月，低头思故乡。
