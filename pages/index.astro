@@ -126,6 +126,20 @@ const allPoems = rawPoems.map((poem, i) => ({
       z-index: 0;
     }
 
+    /* 手机端：宽度始终铺满，浏览器地址栏占用的高度差直接从图片底部裁掉，
+       顶部（含题字）保持完整，不再整体缩小、不再露出黑边 */
+    @media (max-width: 700px) {
+      .frame {
+        width: var(--vvw) !important;
+        height: var(--vvh) !important;
+      }
+      .poem-page .bg {
+        object-fit: cover;
+        object-position: center top;
+      }
+      .backdrop { display: none; }
+    }
+
     /* 默认纯图片，点按后才淡入遮罩与诗文 */
     .poem-page .scrim {
       position: absolute;
