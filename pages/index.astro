@@ -66,6 +66,16 @@ const allPoems = rawPoems.map((poem, i) => ({
       border-radius: 14px;
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
     }
+    /* 手机端：完全还原成铺满全屏，不要卡片边角/阴影/模糊背景 */
+    @media (max-width: 700px) {
+      .frame {
+        width: 100vw;
+        height: 100dvh;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      .backdrop { display: none; }
+    }
 
     /* ---------- 全屏纵向滑动画卷 ---------- */
     .poem-scroll {
@@ -75,7 +85,10 @@ const allPoems = rawPoems.map((poem, i) => ({
       scroll-snap-type: y mandatory;
       scroll-behavior: smooth;
       -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;        /* Firefox */
+      -ms-overflow-style: none;     /* 旧版 Edge/IE */
     }
+    .poem-scroll::-webkit-scrollbar { display: none; } /* Chrome/Safari */
     .poem-page {
       position: relative;
       height: 100%;
@@ -173,24 +186,41 @@ const allPoems = rawPoems.map((poem, i) => ({
       z-index: 5;
     }
 
-    /* ---------- 右下角搜索圆钮 ---------- */
+    /* ---------- 右下角搜索按钮 ---------- */
     .search-fab {
       position: fixed;
-      right: 18px;
-      bottom: calc(18px + env(safe-area-inset-bottom));
+      right: 20px;
+      bottom: calc(20px + env(safe-area-inset-bottom));
       z-index: 10;
-      width: 52px;
-      height: 52px;
+      width: 54px;
+      height: 54px;
       border-radius: 50%;
-      background: rgba(20,22,28,0.6);
-      backdrop-filter: blur(6px);
-      border: 1px solid var(--seal-dim);
-      color: var(--seal);
-      font-size: 1.3rem;
+      background: rgba(27, 32, 39, 0.55);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid rgba(201, 162, 39, 0.55);
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
+      padding: 0;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    .search-fab svg {
+      width: 22px;
+      height: 22px;
+      stroke: var(--seal);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .search-fab:hover {
+      background: rgba(27, 32, 39, 0.75);
+      border-color: var(--seal);
+    }
+    .search-fab:active {
+      transform: scale(0.92);
     }
 
     /* ---------- 搜索面板 ---------- */
@@ -311,7 +341,12 @@ const allPoems = rawPoems.map((poem, i) => ({
     </div>
   </div>
 
-  <button class="search-fab" id="searchFab" aria-label="搜索">🔍</button>
+  <button class="search-fab" id="searchFab" aria-label="搜索">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="10.5" cy="10.5" r="6.5"></circle>
+      <line x1="20" y1="20" x2="15.4" y2="15.4"></line>
+    </svg>
+  </button>
 
   <div class="search-panel" id="searchPanel">
     <div class="search-panel-header">
