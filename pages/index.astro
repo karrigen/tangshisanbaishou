@@ -2,94 +2,408 @@
 // 自动读取根目录下的所有 Markdown 诗词文件
 const rawPoems = await Astro.glob('../*.md');
 
-const allPoems = rawPoems.map(poem => ({
+// 数字转中文数字（用于诗页序号，如 "一 / 二十三 / 一百零八"）
+function toChinese(num) {
+  const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  if (num <= 10) return num === 10 ? '十' : digits[num];
+  if (num < 20) return '十' + (num % 10 ? digits[num % 10] : '');
+  if (num < 100) {
+    const tens = Math.floor(num / 10), ones = num % 10;
+    return digits[tens] + '十' + (ones ? digits[ones] : '');
+  }
+  const hundreds = Math.floor(num / 100), rest = num % 100;
+  let str = digits[hundreds] + '百';
+  if (rest === 0) return str;
+  str += rest < 10 ? '零' + digits[rest] : toChinese(rest);
+  return str;
+}
+
+const allPoems = rawPoems.map((poem, i) => ({
   data: poem.frontmatter,
-  body: poem.rawContent()
+  body: poem.rawContent(),
+  index: i + 1,
+  indexCn: toChinese(i + 1),
 }));
 ---
-
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>唐诗三百首 - 诗画鉴赏</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.isotope/3.0.6/isotope.pkgd.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>唐诗三百首 · 诗画卷</title>
   <style>
-    body { font-family: "Kaiti SC", "STKaiti", serif; background: #f4f0ea; color: #2b2b2b; margin: 0; padding: 20px; }
-    header { text-align: center; margin-bottom: 20px; }
-    .controls { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
-    input, select { padding: 8px 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
-    
-    .grid { margin: 0 auto; max-width: 1200px; }
-    .grid-item { width: calc(33.333% - 20px); margin-bottom: 20px; box-sizing: border-box; }
-    @media (max-width: 768px) { .grid-item { width: calc(50% - 10px); } }
-    @media (max-width: 480px) { .grid-item { width: 100%; } }
+    :root {
+      --ink: #1b2027;        /* 深靛墨色，替代纯黑遮罩 */
+      --paper: #f2ede1;      /* 宣纸白 */
+      --seal: #c9a227;       /* 印泥金 */
+      --seal-dim: rgba(201, 162, 39, 0.35);
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0; height: 100%;
+      font-family: "Kaiti SC", "STKaiti", "楷体", serif;
+      background: var(--ink);
+      color: var(--paper);
+      overflow: hidden;
+    }
 
-    .card { background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); padding-bottom: 15px; }
-    .card img { width: 100%; height: auto; display: block; }
-    .card-content { padding: 15px; text-align: center; }
-    .card h3 { margin: 0 0 5px 0; font-size: 1.2rem; }
-    .card .meta { font-size: 0.9rem; color: #666; margin-bottom: 10px; }
-    .card .poem-text { font-size: 1rem; line-height: 1.6; white-space: pre-line; }
+    /* ---------- 全屏纵向滑动画卷 ---------- */
+    .poem-scroll {
+      height: 100dvh;
+      width: 100vw;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+    .poem-page {
+      position: relative;
+      height: 100dvh;
+      width: 100vw;
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      overflow: hidden;
+      display: none;
+    }
+    .poem-page.is-visible { display: block; }
+
+    .poem-page .bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      z-index: 0;
+      filter: saturate(0.92) brightness(0.92);
+    }
+    /* 左侧渐暗，衬托竖排诗文卷轴 */
+    .poem-page .scrim {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to right, rgba(20,22,28,0.72) 0%, rgba(20,22,28,0.35) 38%, transparent 62%);
+      z-index: 1;
+    }
+
+    /* ---------- 序号印章（左上角，标注真实卷次） ---------- */
+    .seal {
+      position: absolute;
+      top: max(18px, env(safe-area-inset-top));
+      left: 18px;
+      z-index: 2;
+      width: 40px;
+      height: 40px;
+      border: 1.5px solid var(--seal);
+      color: var(--seal);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      letter-spacing: 1px;
+      writing-mode: vertical-rl;
+      background: rgba(20,22,28,0.35);
+    }
+
+    /* ---------- 竖排诗文卷轴（本设计的标志性元素） ---------- */
+    .scroll-panel {
+      position: absolute;
+      top: 10%;
+      bottom: 10%;
+      left: 20px;
+      z-index: 2;
+      display: flex;
+      flex-direction: row-reverse; /* 传统由右向左排列诗行 */
+      gap: 14px;
+      align-items: stretch;
+    }
+    .scroll-panel .poem-text {
+      writing-mode: vertical-rl;
+      font-size: clamp(1.05rem, 4vw, 1.35rem);
+      line-height: 2.05;
+      letter-spacing: 0.12em;
+      white-space: pre-line;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.55);
+    }
+    .scroll-panel .title-block {
+      writing-mode: vertical-rl;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding-left: 6px;
+      border-left: 1px solid var(--seal-dim);
+    }
+    .scroll-panel .title-block h3 {
+      margin: 0;
+      font-size: clamp(1.3rem, 5vw, 1.7rem);
+      font-weight: 600;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.6);
+    }
+    .scroll-panel .title-block .meta {
+      font-size: 0.85rem;
+      color: var(--seal);
+      opacity: 0.9;
+    }
+
+    /* ---------- 无匹配结果提示（首页滑动区） ---------- */
+    .empty-state {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: var(--paper);
+      font-size: 1.05rem;
+      opacity: 0.8;
+      text-align: center;
+      padding: 0 30px;
+    }
+
+    /* ---------- 右下角搜索圆钮 ---------- */
+    .search-fab {
+      position: fixed;
+      right: 18px;
+      bottom: calc(18px + env(safe-area-inset-bottom));
+      z-index: 10;
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      background: rgba(20,22,28,0.6);
+      backdrop-filter: blur(6px);
+      border: 1px solid var(--seal-dim);
+      color: var(--seal);
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    /* ---------- 搜索面板 ---------- */
+    .search-panel {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      background: rgba(17,19,24,0.97);
+      transform: translateY(100%);
+      transition: transform 0.32s ease;
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      color: var(--paper);
+    }
+    .search-panel.open { transform: translateY(0); }
+
+    .search-panel-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .search-panel-header input {
+      flex: 1;
+      padding: 10px 14px;
+      font-size: 1rem;
+      border-radius: 20px;
+      border: 1px solid #555;
+      background: var(--paper);
+      color: #222;
+      font-family: inherit;
+    }
+    .search-panel-header .close-btn {
+      background: none;
+      border: none;
+      color: var(--paper);
+      font-size: 1.7rem;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 4px;
+    }
+
+    .filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+    .filters button {
+      padding: 6px 14px;
+      border-radius: 16px;
+      border: 1px solid #666;
+      background: transparent;
+      color: var(--paper);
+      font-size: 0.9rem;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .filters button.active {
+      background: var(--seal);
+      color: #201a08;
+      border-color: var(--seal);
+    }
+
+    .result-list { overflow-y: auto; flex: 1; }
+    .result-item {
+      padding: 12px 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 10px;
+    }
+    .result-item .r-title { font-size: 1.05rem; }
+    .result-item .r-meta { font-size: 0.82rem; opacity: 0.65; white-space: nowrap; }
+    .result-empty {
+      text-align: center;
+      opacity: 0.6;
+      padding: 30px 0;
+      display: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .poem-scroll { scroll-behavior: auto; }
+      .search-panel { transition: none; }
+    }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>唐诗三百首</h1>
-  </header>
-
-  <div class="controls">
-    <input type="text" id="quicksearch" placeholder="搜索诗名、作者或诗句..." />
-    <select id="filter-form">
-      <option value="*">所有体裁</option>
-      <option value=".七言绝句">七言绝句</option>
-      <option value=".五言绝句">五言绝句</option>
-    </select>
-  </div>
-
-  <div class="grid">
-    {allPoems.map(poem => (
-      <div class={`grid-item ${poem.data.form}`} data-author={poem.data.author} data-title={poem.data.title} data-content={poem.body}>
-        <div class="card">
-          <img src={poem.data.coverImage} alt={poem.data.title} loading="lazy" />
-          <div class="card-content">
+  <div class="poem-scroll is-visible" id="poemScroll">
+    {allPoems.map((poem) => (
+      <section
+        class="poem-page is-visible"
+        data-index={poem.index}
+        data-title={poem.data.title}
+        data-author={poem.data.author}
+        data-form={poem.data.form}
+      >
+        <img class="bg" src={poem.data.coverImage} alt={poem.data.title} loading={poem.index === 1 ? 'eager' : 'lazy'} />
+        <div class="scrim"></div>
+        <div class="seal">{poem.indexCn}</div>
+        <div class="scroll-panel">
+          <div class="title-block">
             <h3>{poem.data.title}</h3>
-            <div class="meta">[{poem.data.author}] · {poem.data.form}</div>
-            <div class="poem-text">{poem.body}</div>
+            <div class="meta">{poem.data.author} · {poem.data.form}</div>
           </div>
+          <div class="poem-text">{poem.body}</div>
         </div>
-      </div>
+      </section>
     ))}
   </div>
 
+  <div class="empty-state" id="emptyState">未找到匹配的诗词，试试换个关键词或筛选条件</div>
+
+  <button class="search-fab" id="searchFab" aria-label="搜索">🔍</button>
+
+  <div class="search-panel" id="searchPanel">
+    <div class="search-panel-header">
+      <input type="text" id="quicksearch" placeholder="搜索诗名或作者..." />
+      <button class="close-btn" id="closeSearch" aria-label="关闭">×</button>
+    </div>
+    <div class="filters" id="filterGroup">
+      <button data-filter="*" class="active">全部</button>
+      <button data-filter="五言绝句">五言绝句</button>
+      <button data-filter="七言绝句">七言绝句</button>
+    </div>
+    <div class="result-list" id="resultList"></div>
+    <div class="result-empty" id="resultEmpty">没有找到符合条件的诗</div>
+  </div>
+
   <script is:inline>
-    $(window).on('load', function() {
-      var $grid = $('.grid').isotope({
-        itemSelector: '.grid-item',
-        percentPosition: true,
-        masonry: { columnWidth: '.grid-item' }
+    (function () {
+      const scrollEl = document.getElementById('poemScroll');
+      const pages = Array.from(document.querySelectorAll('.poem-page'));
+      const emptyState = document.getElementById('emptyState');
+      const fab = document.getElementById('searchFab');
+      const panel = document.getElementById('searchPanel');
+      const closeBtn = document.getElementById('closeSearch');
+      const input = document.getElementById('quicksearch');
+      const filterGroup = document.getElementById('filterGroup');
+      const resultList = document.getElementById('resultList');
+      const resultEmpty = document.getElementById('resultEmpty');
+
+      let activeFilter = '*';
+
+      function openPanel() {
+        panel.classList.add('open');
+        renderResults();
+        setTimeout(() => input.focus(), 300);
+      }
+      function closePanel() {
+        panel.classList.remove('open');
+      }
+      fab.addEventListener('click', openPanel);
+      closeBtn.addEventListener('click', closePanel);
+
+      filterGroup.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-filter]');
+        if (!btn) return;
+        activeFilter = btn.dataset.filter;
+        filterGroup.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === btn));
+        renderResults();
       });
 
-      $('#filter-form').on('change', function() {
-        var filterValue = this.value;
-        $grid.isotope({ filter: filterValue });
-      });
+      input.addEventListener('input', renderResults);
 
-      $('#quicksearch').on('keyup', function() {
-        var qsRegex = new RegExp($('#quicksearch').val(), 'gi');
-        $grid.isotope({
-          filter: function() {
-            var title = $(this).attr('data-title');
-            var author = $(this).attr('data-author');
-            var content = $(this).attr('data-content');
-            return qsRegex ? (title + author + content).match(qsRegex) : true;
+      // 搜索面板内的结果列表：仅用于快速跳转，不影响主画卷内容
+      function renderResults() {
+        const q = input.value.trim().toLowerCase();
+        resultList.innerHTML = '';
+        let matchCount = 0;
+
+        pages.forEach((page) => {
+          const title = page.dataset.title || '';
+          const author = page.dataset.author || '';
+          const form = page.dataset.form || '';
+
+          const matchesFilter = activeFilter === '*' || form === activeFilter;
+          const matchesQuery = !q || title.toLowerCase().includes(q) || author.toLowerCase().includes(q);
+
+          if (matchesFilter && matchesQuery) {
+            matchCount++;
+            const item = document.createElement('div');
+            item.className = 'result-item';
+            item.innerHTML =
+              '<span class="r-title">' + title + '</span>' +
+              '<span class="r-meta">' + author + ' · ' + form + '</span>';
+            item.addEventListener('click', () => {
+              page.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              closePanel();
+            });
+            resultList.appendChild(item);
           }
         });
-      });
-    });
+
+        resultEmpty.style.display = matchCount === 0 ? 'block' : 'none';
+      }
+
+      // 首页滑动画卷本身也支持“仅显示筛选结果”：搜索面板关闭后，
+      // 若用户曾筛选/搜索，画卷中仅保留匹配的诗页，滑动时依次呈现。
+      function applyToMainScroll() {
+        const q = input.value.trim().toLowerCase();
+        let visibleCount = 0;
+        pages.forEach((page) => {
+          const title = page.dataset.title || '';
+          const author = page.dataset.author || '';
+          const form = page.dataset.form || '';
+          const matchesFilter = activeFilter === '*' || form === activeFilter;
+          const matchesQuery = !q || title.toLowerCase().includes(q) || author.toLowerCase().includes(q);
+          const show = matchesFilter && matchesQuery;
+          page.classList.toggle('is-visible', show);
+          if (show) visibleCount++;
+        });
+        emptyState.style.display = visibleCount === 0 ? 'flex' : 'none';
+        if (visibleCount > 0) {
+          const firstVisible = pages.find((p) => p.classList.contains('is-visible'));
+          if (firstVisible) firstVisible.scrollIntoView({ block: 'start' });
+        }
+      }
+
+      closeBtn.addEventListener('click', applyToMainScroll);
+      // 点击结果直接跳转时，也把筛选状态同步到主画卷
+      resultList.addEventListener('click', applyToMainScroll);
+    })();
   </script>
 </body>
 </html>
