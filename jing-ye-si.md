@@ -3,7 +3,7 @@ title: "静夜思"
 author: "李白"
 form: "五言绝句"
 tag: "思乡"
-coverImage: "/images/jing-ye-si.png"
+coverImage: "/images/jing-ye-si.webp"
 ---
 
 床前明月光，疑是地上霜。
