@@ -2,27 +2,10 @@
 // 自动读取根目录下的所有 Markdown 诗词文件
 const rawPoems = await Astro.glob('../*.md');
 
-// 数字转中文数字（用于诗页序号，如 "一 / 二十三 / 一百零八"）
-function toChinese(num) {
-  const digits = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
-  if (num <= 10) return num === 10 ? '十' : digits[num];
-  if (num < 20) return '十' + (num % 10 ? digits[num % 10] : '');
-  if (num < 100) {
-    const tens = Math.floor(num / 10), ones = num % 10;
-    return digits[tens] + '十' + (ones ? digits[ones] : '');
-  }
-  const hundreds = Math.floor(num / 100), rest = num % 100;
-  let str = digits[hundreds] + '百';
-  if (rest === 0) return str;
-  str += rest < 10 ? '零' + digits[rest] : toChinese(rest);
-  return str;
-}
-
 const allPoems = rawPoems.map((poem, i) => ({
   data: poem.frontmatter,
   body: poem.rawContent(),
   index: i + 1,
-  indexCn: toChinese(i + 1),
 }));
 ---
 <!DOCTYPE html>
@@ -42,15 +25,52 @@ const allPoems = rawPoems.map((poem, i) => ({
     html, body {
       margin: 0; padding: 0; height: 100%;
       font-family: "Kaiti SC", "STKaiti", "楷体", serif;
-      background: var(--ink);
+      background: #0b0d10;
       color: var(--paper);
       overflow: hidden;
     }
 
+    /* ---------- 舞台：铺满整个视口，负责在桌面端居中卡片 ---------- */
+    .stage {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      background: #0b0d10;
+    }
+
+    /* 铺满整个视口的模糊背景——始终可见，图片比例和窗口比例不一致时用它填补空白，
+       而不是让人看见生硬的黑边 */
+    .backdrop {
+      position: absolute;
+      inset: -60px;
+      background-size: cover;
+      background-position: center;
+      filter: blur(50px) brightness(0.5) saturate(1.15);
+      transform: scale(1.15);
+      transition: background-image 0.45s ease;
+      z-index: 0;
+    }
+
+    /* ---------- 卡片：始终保持诗配图原始的 9:16 比例，
+       在任何屏幕尺寸下自动取"能放下的最大 9:16 矩形"，多余空间露出模糊背景 ---------- */
+    .frame {
+      position: relative;
+      z-index: 1;
+      width: min(100vw, 100dvh * 9 / 16);
+      height: min(100dvh, 100vw * 16 / 9);
+      overflow: hidden;
+      background: #000;
+      border-radius: 14px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+
     /* ---------- 全屏纵向滑动画卷 ---------- */
     .poem-scroll {
-      height: 100dvh;
-      width: 100vw;
+      height: 100%;
+      width: 100%;
       overflow-y: scroll;
       scroll-snap-type: y mandatory;
       scroll-behavior: smooth;
@@ -58,12 +78,13 @@ const allPoems = rawPoems.map((poem, i) => ({
     }
     .poem-page {
       position: relative;
-      height: 100dvh;
-      width: 100vw;
+      height: 100%;
+      width: 100%;
       scroll-snap-align: start;
       scroll-snap-stop: always;
       overflow: hidden;
       display: none;
+      cursor: pointer;
     }
     .poem-page.is-visible { display: block; }
 
@@ -74,37 +95,21 @@ const allPoems = rawPoems.map((poem, i) => ({
       height: 100%;
       object-fit: cover;
       z-index: 0;
-      filter: saturate(0.92) brightness(0.92);
     }
-    /* 左侧渐暗，衬托竖排诗文卷轴 */
+
+    /* 默认纯图片，点按后才淡入遮罩与诗文 */
     .poem-page .scrim {
       position: absolute;
       inset: 0;
-      background: linear-gradient(to right, rgba(20,22,28,0.72) 0%, rgba(20,22,28,0.35) 38%, transparent 62%);
+      background: linear-gradient(to right, rgba(20,22,28,0.78) 0%, rgba(20,22,28,0.4) 40%, transparent 66%);
       z-index: 1;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+      pointer-events: none;
     }
+    .poem-page.info-open .scrim { opacity: 1; }
 
-    /* ---------- 序号印章（左上角，标注真实卷次） ---------- */
-    .seal {
-      position: absolute;
-      top: max(18px, env(safe-area-inset-top));
-      left: 18px;
-      z-index: 2;
-      width: 40px;
-      height: 40px;
-      border: 1.5px solid var(--seal);
-      color: var(--seal);
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.85rem;
-      letter-spacing: 1px;
-      writing-mode: vertical-rl;
-      background: rgba(20,22,28,0.35);
-    }
-
-    /* ---------- 竖排诗文卷轴（本设计的标志性元素） ---------- */
+    /* ---------- 竖排诗文卷轴（点击后显示） ---------- */
     .scroll-panel {
       position: absolute;
       top: 10%;
@@ -115,6 +120,14 @@ const allPoems = rawPoems.map((poem, i) => ({
       flex-direction: row-reverse; /* 传统由右向左排列诗行 */
       gap: 14px;
       align-items: stretch;
+      opacity: 0;
+      transform: translateX(-8px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: none;
+    }
+    .poem-page.info-open .scroll-panel {
+      opacity: 1;
+      transform: translateX(0);
     }
     .scroll-panel .poem-text {
       writing-mode: vertical-rl;
@@ -157,6 +170,7 @@ const allPoems = rawPoems.map((poem, i) => ({
       opacity: 0.8;
       text-align: center;
       padding: 0 30px;
+      z-index: 5;
     }
 
     /* ---------- 右下角搜索圆钮 ---------- */
@@ -269,30 +283,33 @@ const allPoems = rawPoems.map((poem, i) => ({
 </head>
 <body>
 
-  <div class="poem-scroll is-visible" id="poemScroll">
-    {allPoems.map((poem) => (
-      <section
-        class="poem-page is-visible"
-        data-index={poem.index}
-        data-title={poem.data.title}
-        data-author={poem.data.author}
-        data-form={poem.data.form}
-      >
-        <img class="bg" src={poem.data.coverImage} alt={poem.data.title} loading={poem.index === 1 ? 'eager' : 'lazy'} />
-        <div class="scrim"></div>
-        <div class="seal">{poem.indexCn}</div>
-        <div class="scroll-panel">
-          <div class="title-block">
-            <h3>{poem.data.title}</h3>
-            <div class="meta">{poem.data.author} · {poem.data.form}</div>
-          </div>
-          <div class="poem-text">{poem.body}</div>
-        </div>
-      </section>
-    ))}
+  <div class="stage">
+    <div class="backdrop" id="backdrop"></div>
+    <div class="frame">
+      <div class="poem-scroll is-visible" id="poemScroll">
+        {allPoems.map((poem) => (
+          <section
+            class="poem-page is-visible"
+            data-index={poem.index}
+            data-title={poem.data.title}
+            data-author={poem.data.author}
+            data-form={poem.data.form}
+          >
+            <img class="bg" src={poem.data.coverImage} alt={poem.data.title} loading={poem.index === 1 ? 'eager' : 'lazy'} />
+            <div class="scrim"></div>
+            <div class="scroll-panel">
+              <div class="title-block">
+                <h3>{poem.data.title}</h3>
+                <div class="meta">{poem.data.author} · {poem.data.form}</div>
+              </div>
+              <div class="poem-text">{poem.body}</div>
+            </div>
+          </section>
+        ))}
+      </div>
+      <div class="empty-state" id="emptyState">未找到匹配的诗词，试试换个关键词或筛选条件</div>
+    </div>
   </div>
-
-  <div class="empty-state" id="emptyState">未找到匹配的诗词，试试换个关键词或筛选条件</div>
 
   <button class="search-fab" id="searchFab" aria-label="搜索">🔍</button>
 
@@ -314,6 +331,7 @@ const allPoems = rawPoems.map((poem, i) => ({
     (function () {
       const scrollEl = document.getElementById('poemScroll');
       const pages = Array.from(document.querySelectorAll('.poem-page'));
+      const backdrop = document.getElementById('backdrop');
       const emptyState = document.getElementById('emptyState');
       const fab = document.getElementById('searchFab');
       const panel = document.getElementById('searchPanel');
@@ -324,6 +342,36 @@ const allPoems = rawPoems.map((poem, i) => ({
       const resultEmpty = document.getElementById('resultEmpty');
 
       let activeFilter = '*';
+
+      // ---- 单击图片显示/隐藏诗文 ----
+      pages.forEach((page) => {
+        page.addEventListener('click', () => {
+          const wasOpen = page.classList.contains('info-open');
+          pages.forEach((p) => p.classList.remove('info-open'));
+          if (!wasOpen) page.classList.add('info-open');
+        });
+      });
+
+      // ---- 桌面端：模糊背景跟随当前可见的诗页 ----
+      if (backdrop) {
+        const setBackdrop = (page) => {
+          const img = page.querySelector('.bg');
+          if (img && img.src) backdrop.style.backgroundImage = 'url(' + img.src + ')';
+        };
+        const io = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting && entry.intersectionRatio > 0.6) {
+                setBackdrop(entry.target);
+              }
+            });
+          },
+          { root: scrollEl, threshold: [0.6] }
+        );
+        pages.forEach((page) => io.observe(page));
+        const firstVisible = pages.find((p) => p.classList.contains('is-visible'));
+        if (firstVisible) setBackdrop(firstVisible);
+      }
 
       function openPanel() {
         panel.classList.add('open');
@@ -368,6 +416,8 @@ const allPoems = rawPoems.map((poem, i) => ({
               '<span class="r-title">' + title + '</span>' +
               '<span class="r-meta">' + author + ' · ' + form + '</span>';
             item.addEventListener('click', () => {
+              pages.forEach((p) => p.classList.remove('info-open'));
+              page.classList.add('info-open');
               page.scrollIntoView({ behavior: 'smooth', block: 'start' });
               closePanel();
             });
@@ -396,7 +446,11 @@ const allPoems = rawPoems.map((poem, i) => ({
         emptyState.style.display = visibleCount === 0 ? 'flex' : 'none';
         if (visibleCount > 0) {
           const firstVisible = pages.find((p) => p.classList.contains('is-visible'));
-          if (firstVisible) firstVisible.scrollIntoView({ block: 'start' });
+          if (firstVisible) {
+            firstVisible.scrollIntoView({ block: 'start' });
+            const img = firstVisible.querySelector('.bg');
+            if (backdrop && img && img.src) backdrop.style.backgroundImage = 'url(' + img.src + ')';
+          }
         }
       }
 
