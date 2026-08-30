@@ -14,12 +14,36 @@ const allPoems = rawPoems.map((poem, i) => ({
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>唐诗三百首 · 诗画卷</title>
+  <script>
+    // 用 JavaScript 直接读取浏览器真实可视区域尺寸，写入 CSS 变量。
+    // 比依赖 vh/dvh/svh 更可靠——不同浏览器（尤其 Brave 等）对这些视口单位的
+    // 实现细节不完全一致，读 visualViewport 拿到的才是"眼睛实际看到的区域"。
+    (function () {
+      function setViewportVars() {
+        var vv = window.visualViewport;
+        var w = vv ? vv.width : window.innerWidth;
+        var h = vv ? vv.height : window.innerHeight;
+        document.documentElement.style.setProperty('--vvw', w + 'px');
+        document.documentElement.style.setProperty('--vvh', h + 'px');
+      }
+      setViewportVars();
+      window.addEventListener('resize', setViewportVars);
+      window.addEventListener('orientationchange', setViewportVars);
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', setViewportVars);
+        window.visualViewport.addEventListener('scroll', setViewportVars);
+      }
+    })();
+  </script>
   <style>
     :root {
       --ink: #1b2027;        /* 深靛墨色，替代纯黑遮罩 */
       --paper: #f2ede1;      /* 宣纸白 */
       --seal: #c9a227;       /* 印泥金 */
       --seal-dim: rgba(201, 162, 39, 0.35);
+      /* JS 加载前的兜底值，JS 一运行会立刻用真实像素值覆盖 */
+      --vvw: 100vw;
+      --vvh: 100vh;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
@@ -30,10 +54,13 @@ const allPoems = rawPoems.map((poem, i) => ({
       overflow: hidden;
     }
 
-    /* ---------- 舞台：铺满整个视口，负责在桌面端居中卡片 ---------- */
+    /* ---------- 舞台：铺满真实可视区域，负责在桌面端居中卡片 ---------- */
     .stage {
       position: fixed;
-      inset: 0;
+      top: 0;
+      left: 0;
+      width: var(--vvw);
+      height: var(--vvh);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -56,19 +83,13 @@ const allPoems = rawPoems.map((poem, i) => ({
 
     /* ---------- 卡片：始终保持诗配图真实的比例（853:1844，约等于主流手机全面屏比例），
        在任何屏幕尺寸下自动取"能放下的最大同比例矩形"，多余空间露出模糊背景，
-       绝不会裁掉图中的文字或人物 ---------- */
+       绝不会裁掉图中的文字或人物。尺寸基于 JS 测得的真实可视区域（--vvw/--vvh），
+       不再依赖各浏览器实现不一致的 vh/dvh/svh 单位 ---------- */
     .frame {
       position: relative;
       z-index: 1;
-      /* 逐级回退：不支持 dvh/svh 的老浏览器用 vh，支持的浏览器最终会用 svh 覆盖，
-         svh 取的是地址栏常驻展开时的最小高度，卡片尺寸不会因为地址栏收起/展开而抖动，
-         从根本上避免两侧忽然露出缝隙 */
-      width: min(100vw, 100vh * 853 / 1844);
-      height: min(100vh, 100vw * 1844 / 853);
-      width: min(100vw, 100dvh * 853 / 1844);
-      height: min(100dvh, 100vw * 1844 / 853);
-      width: min(100vw, 100svh * 853 / 1844);
-      height: min(100svh, 100vw * 1844 / 853);
+      width: min(var(--vvw), var(--vvh) * 853 / 1844);
+      height: min(var(--vvh), var(--vvw) * 1844 / 853);
       overflow: hidden;
       background: #000;
     }
