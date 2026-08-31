@@ -1,6 +1,6 @@
 ---
 title: "春晓"
-author: "梦浩然"
+author: "孟浩然"
 form: "五言绝句"
 tag: "春天"
 coverImage: "/images/chun-xiao.webp"
