@@ -1,0 +1,12 @@
+{
+  "name": "tangshisanbaishou",
+  "compatibility_date": "2026-01-01",
+  "main": "worker.js",
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS"
+  },
+  "kv_namespaces": [
+    { "binding": "LIKES", "id": "515e5133405148cf9c9d41cd62d8cb15" }
+  ]
+}
