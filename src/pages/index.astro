@@ -551,78 +551,84 @@ const allPoems = rawPoems.map((poem, i) => ({
         resultEmpty.style.display = matchCount === 0 ? 'block' : 'none';
       }
 
-      // ---- 点赞功能：数量存 Cloudflare KV（全站共享），本地只存"我是否点过" ----
-      {
-        const likeButtons = Array.from(document.querySelectorAll('.like-btn'));
+// ---- 点赞功能：数量存 Cloudflare KV（全站共享），本地只存"我是否点过" ----
+{
+  const likeButtons = Array.from(document.querySelectorAll('.like-btn'));
+  const pendingIds = new Set(); // 记录当前有请求还没返回的诗，防止连点产生竞态
 
-        function getLikedSet() {
-          try {
-            return new Set(JSON.parse(localStorage.getItem('liked-poems') || '[]'));
-          } catch {
-            return new Set();
-          }
-        }
-        function saveLikedSet(set) {
-          localStorage.setItem('liked-poems', JSON.stringify(Array.from(set)));
-        }
+  function getLikedSet() {
+    try {
+      return new Set(JSON.parse(localStorage.getItem('liked-poems') || '[]'));
+    } catch {
+      return new Set();
+    }
+  }
+  function saveLikedSet(set) {
+    localStorage.setItem('liked-poems', JSON.stringify(Array.from(set)));
+  }
 
-        const likedSet = getLikedSet();
+  const likedSet = getLikedSet();
 
-        // 页面加载时一次性拉取所有诗的点赞总数
-        fetch('/api/likes')
-          .then((res) => res.json())
-          .then((counts) => {
-            likeButtons.forEach((btn) => {
-              const id = btn.dataset.poemId;
-              const countEl = btn.querySelector('.like-count');
-              countEl.textContent = counts[id] || 0;
-              btn.classList.toggle('liked', likedSet.has(id));
-            });
-          })
-          .catch((err) => console.error('加载点赞数失败', err));
+  fetch('/api/likes')
+    .then((res) => res.json())
+    .then((counts) => {
+      likeButtons.forEach((btn) => {
+        const id = btn.dataset.poemId;
+        const countEl = btn.querySelector('.like-count');
+        countEl.textContent = counts[id] || 0;
+        btn.classList.toggle('liked', likedSet.has(id));
+      });
+    })
+    .catch((err) => console.error('加载点赞数失败', err));
 
-        likeButtons.forEach((btn) => {
-          btn.addEventListener('click', (e) => {
-            e.stopPropagation(); // 防止冒泡触发诗页的展开/收起
+  likeButtons.forEach((btn) => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
 
-            const id = btn.dataset.poemId;
-            const countEl = btn.querySelector('.like-count');
-            const alreadyLiked = likedSet.has(id);
-            const action = alreadyLiked ? 'unlike' : 'like';
+      const id = btn.dataset.poemId;
 
-            // 乐观更新：先改 UI，再请求后端
-            const optimisticCount = (parseInt(countEl.textContent, 10) || 0) + (alreadyLiked ? -1 : 1);
-            countEl.textContent = optimisticCount;
-            btn.classList.toggle('liked', !alreadyLiked);
-            if (alreadyLiked) {
-              likedSet.delete(id);
-            } else {
-              likedSet.add(id);
-            }
-            saveLikedSet(likedSet);
+      // 这首诗上一个请求还没回来，直接忽略这次点击
+      if (pendingIds.has(id)) return;
+      pendingIds.add(id);
+      btn.style.opacity = '0.6'; // 视觉上给个"处理中"的反馈，可选
 
-            fetch('/api/likes', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ id, action }),
-            })
-              .then((res) => res.json())
-              .then((data) => {
-                // 用后端真实返回的数字覆盖，避免和其他访客的操作产生偏差
-                countEl.textContent = data.count;
-              })
-              .catch((err) => {
-                console.error('点赞请求失败', err);
-                // 请求失败就把 UI 状态回滚
-                countEl.textContent = optimisticCount + (alreadyLiked ? 1 : -1);
-                btn.classList.toggle('liked', alreadyLiked);
-                if (alreadyLiked) likedSet.add(id); else likedSet.delete(id);
-                saveLikedSet(likedSet);
-              });
-          });
-        });
+      const countEl = btn.querySelector('.like-count');
+      const alreadyLiked = likedSet.has(id);
+      const action = alreadyLiked ? 'unlike' : 'like';
+
+      const optimisticCount = (parseInt(countEl.textContent, 10) || 0) + (alreadyLiked ? -1 : 1);
+      countEl.textContent = optimisticCount;
+      btn.classList.toggle('liked', !alreadyLiked);
+      if (alreadyLiked) {
+        likedSet.delete(id);
+      } else {
+        likedSet.add(id);
       }
-    })();
-  </script>
+      saveLikedSet(likedSet);
+
+      fetch('/api/likes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action }),
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          countEl.textContent = data.count;
+        })
+        .catch((err) => {
+          console.error('点赞请求失败', err);
+          countEl.textContent = optimisticCount + (alreadyLiked ? 1 : -1);
+          btn.classList.toggle('liked', alreadyLiked);
+          if (alreadyLiked) likedSet.add(id); else likedSet.delete(id);
+          saveLikedSet(likedSet);
+        })
+        .finally(() => {
+          pendingIds.delete(id);
+          btn.style.opacity = '1';
+        });
+    });
+  });
+}
+</script>
 </body>
 </html>
