@@ -1,6 +1,6 @@
 ---
 // 自动读取根目录下的所有 Markdown 诗词文件
-const rawPoems = await Astro.glob('../*.md');
+const rawPoems = await Astro.glob('../poems/*.md');
 
 const allPoems = rawPoems.map((poem, i) => ({
   data: poem.frontmatter,
