@@ -207,12 +207,17 @@ const allPoems = rawPoems.map((poem, i) => ({
       box-shadow: 0 3px 10px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(244,233,214,0.18);
     }
 
-    /* ---------- 左下角点赞按钮 ---------- */
-    .like-btn {
+    /* ---------- 左下角操作栏：点赞 + 朗读 ---------- */
+    .action-bar {
       position: absolute;
       left: 20px;
       bottom: calc(20px + env(safe-area-inset-bottom));
       z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .like-btn, .read-btn {
       display: flex;
       align-items: center;
       gap: 6px;
@@ -226,9 +231,9 @@ const allPoems = rawPoems.map((poem, i) => ({
       color: var(--paper);
       font-family: inherit;
       font-size: 0.85rem;
-      transition: transform 0.15s ease, background 0.15s ease;
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
     }
-    .like-btn:active {
+    .like-btn:active, .read-btn:active {
       transform: scale(0.9);
     }
     .like-btn .heart-icon {
@@ -246,6 +251,21 @@ const allPoems = rawPoems.map((poem, i) => ({
     }
     .like-btn .like-count {
       min-width: 1.1em;
+    }
+    .read-btn .speaker-icon {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: #f4e9d6;
+      stroke-width: 2;
+      transition: stroke 0.2s ease;
+    }
+    .read-btn.reading {
+      background: rgba(201, 162, 39, 0.35);
+      border-color: var(--seal);
+    }
+    .read-btn.reading .speaker-icon {
+      stroke: var(--seal);
     }
 
     /* ---------- 右下角搜索按钮 ---------- */
@@ -396,16 +416,26 @@ const allPoems = rawPoems.map((poem, i) => ({
               </div>
               <div class="poem-text">{poem.body}</div>
             </div>
-            <button
-              class="like-btn"
-              data-poem-id={poem.data.title}
-              aria-label="点赞"
-            >
-              <svg class="heart-icon" viewBox="0 0 24 24">
-                <path d="M12 21s-6.7-4.3-9.3-8.2C1 10.1 1.5 6.8 4 5.1c2-1.4 4.6-1 6.2.9.6.7 1.1 1.5 1.8 1.5s1.2-.8 1.8-1.5c1.6-1.9 4.2-2.3 6.2-.9 2.5 1.7 3 5 1.3 7.7C18.7 16.7 12 21 12 21z"/>
-              </svg>
-              <span class="like-count">0</span>
-            </button>
+            <div class="action-bar">
+              <button
+                class="like-btn"
+                data-poem-id={poem.data.title}
+                aria-label="点赞"
+              >
+                <svg class="heart-icon" viewBox="0 0 24 24">
+                  <path d="M12 21s-6.7-4.3-9.3-8.2C1 10.1 1.5 6.8 4 5.1c2-1.4 4.6-1 6.2.9.6.7 1.1 1.5 1.8 1.5s1.2-.8 1.8-1.5c1.6-1.9 4.2-2.3 6.2-.9 2.5 1.7 3 5 1.3 7.7C18.7 16.7 12 21 12 21z"/>
+                </svg>
+                <span class="like-count">0</span>
+              </button>
+
+              <button class="read-btn" aria-label="朗读">
+                <svg class="speaker-icon" viewBox="0 0 24 24">
+                  <path d="M11 5 6 9H3v6h3l5 4V5z"/>
+                  <path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+                  <path d="M18 6a9 9 0 0 1 0 12"/>
+                </svg>
+              </button>
+            </div>
           </section>
         ))}
       </div>
@@ -551,85 +581,156 @@ const allPoems = rawPoems.map((poem, i) => ({
         resultEmpty.style.display = matchCount === 0 ? 'block' : 'none';
       }
 
-// ---- 点赞功能：数量存 Cloudflare KV（全站共享），本地只存"我是否点过" ----
-{
-  const likeButtons = Array.from(document.querySelectorAll('.like-btn'));
-  const pendingIds = new Set(); // 记录当前有请求还没返回的诗，防止连点产生竞态
+      // ---- 点赞功能：数量存 Cloudflare KV（全站共享），本地只存"我是否点过" ----
+      {
+        const likeButtons = Array.from(document.querySelectorAll('.like-btn'));
+        const pendingIds = new Set(); // 记录当前有请求还没返回的诗，防止连点产生竞态
 
-  function getLikedSet() {
-    try {
-      return new Set(JSON.parse(localStorage.getItem('liked-poems') || '[]'));
-    } catch {
-      return new Set();
-    }
-  }
-  function saveLikedSet(set) {
-    localStorage.setItem('liked-poems', JSON.stringify(Array.from(set)));
-  }
+        function getLikedSet() {
+          try {
+            return new Set(JSON.parse(localStorage.getItem('liked-poems') || '[]'));
+          } catch {
+            return new Set();
+          }
+        }
+        function saveLikedSet(set) {
+          localStorage.setItem('liked-poems', JSON.stringify(Array.from(set)));
+        }
 
-  const likedSet = getLikedSet();
+        const likedSet = getLikedSet();
 
-  fetch('/api/likes')
-    .then((res) => res.json())
-    .then((counts) => {
-      likeButtons.forEach((btn) => {
-        const id = btn.dataset.poemId;
-        const countEl = btn.querySelector('.like-count');
-        countEl.textContent = counts[id] || 0;
-        btn.classList.toggle('liked', likedSet.has(id));
-      });
-    })
-    .catch((err) => console.error('加载点赞数失败', err));
+        fetch('/api/likes')
+          .then((res) => res.json())
+          .then((counts) => {
+            likeButtons.forEach((btn) => {
+              const id = btn.dataset.poemId;
+              const countEl = btn.querySelector('.like-count');
+              countEl.textContent = counts[id] || 0;
+              btn.classList.toggle('liked', likedSet.has(id));
+            });
+          })
+          .catch((err) => console.error('加载点赞数失败', err));
 
-  likeButtons.forEach((btn) => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
+        likeButtons.forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
 
-      const id = btn.dataset.poemId;
+            const id = btn.dataset.poemId;
 
-      // 这首诗上一个请求还没回来，直接忽略这次点击
-      if (pendingIds.has(id)) return;
-      pendingIds.add(id);
-      btn.style.opacity = '0.6'; // 视觉上给个"处理中"的反馈，可选
+            // 这首诗上一个请求还没回来，直接忽略这次点击
+            if (pendingIds.has(id)) return;
+            pendingIds.add(id);
+            btn.style.opacity = '0.6'; // 视觉上给个"处理中"的反馈，可选
 
-      const countEl = btn.querySelector('.like-count');
-      const alreadyLiked = likedSet.has(id);
-      const action = alreadyLiked ? 'unlike' : 'like';
+            const countEl = btn.querySelector('.like-count');
+            const alreadyLiked = likedSet.has(id);
+            const action = alreadyLiked ? 'unlike' : 'like';
 
-      const optimisticCount = (parseInt(countEl.textContent, 10) || 0) + (alreadyLiked ? -1 : 1);
-      countEl.textContent = optimisticCount;
-      btn.classList.toggle('liked', !alreadyLiked);
-      if (alreadyLiked) {
-        likedSet.delete(id);
-      } else {
-        likedSet.add(id);
-      }
-      saveLikedSet(likedSet);
+            const optimisticCount = (parseInt(countEl.textContent, 10) || 0) + (alreadyLiked ? -1 : 1);
+            countEl.textContent = optimisticCount;
+            btn.classList.toggle('liked', !alreadyLiked);
+            if (alreadyLiked) {
+              likedSet.delete(id);
+            } else {
+              likedSet.add(id);
+            }
+            saveLikedSet(likedSet);
 
-      fetch('/api/likes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action }),
-      })
-        .then((res) => res.json())
-        .then((data) => {
-          countEl.textContent = data.count;
-        })
-        .catch((err) => {
-          console.error('点赞请求失败', err);
-          countEl.textContent = optimisticCount + (alreadyLiked ? 1 : -1);
-          btn.classList.toggle('liked', alreadyLiked);
-          if (alreadyLiked) likedSet.add(id); else likedSet.delete(id);
-          saveLikedSet(likedSet);
-        })
-        .finally(() => {
-          pendingIds.delete(id);
-          btn.style.opacity = '1';
+            fetch('/api/likes', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id, action }),
+            })
+              .then((res) => res.json())
+              .then((data) => {
+                countEl.textContent = data.count;
+              })
+              .catch((err) => {
+                console.error('点赞请求失败', err);
+                countEl.textContent = optimisticCount + (alreadyLiked ? 1 : -1);
+                btn.classList.toggle('liked', alreadyLiked);
+                if (alreadyLiked) likedSet.add(id); else likedSet.delete(id);
+                saveLikedSet(likedSet);
+              })
+              .finally(() => {
+                pendingIds.delete(id);
+                btn.style.opacity = '1';
+              });
+          });
         });
-    });
-  });
-}
+      }
+
+      // ---- 朗读功能：使用浏览器自带的语音合成，零后端成本 ----
+      {
+        const synth = window.speechSynthesis;
+        let currentBtn = null;
+
+        function stopReading() {
+          synth.cancel();
+          if (currentBtn) currentBtn.classList.remove('reading');
+          currentBtn = null;
+        }
+
+        function pickChineseVoice() {
+          const voices = synth.getVoices();
+          return (
+            voices.find((v) => v.lang === 'zh-CN') ||
+            voices.find((v) => v.lang && v.lang.startsWith('zh')) ||
+            null
+          );
+        }
+
+        document.querySelectorAll('.read-btn').forEach((btn) => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation(); // 防止冒泡触发诗页展开/收起
+
+            if (!('speechSynthesis' in window)) {
+              alert('抱歉，你的浏览器不支持朗读功能');
+              return;
+            }
+
+            // 再点一次正在朗读的按钮 = 停止
+            if (currentBtn === btn) {
+              stopReading();
+              return;
+            }
+
+            // 切换到另一首诗朗读，先停掉上一首
+            stopReading();
+
+            const page = btn.closest('.poem-page');
+            const title = page.dataset.title || '';
+            const author = page.dataset.author || '';
+            const textEl = page.querySelector('.poem-text');
+            const body = textEl ? textEl.textContent.trim() : '';
+
+            const utterance = new SpeechSynthesisUtterance(title + '，' + author + '。' + body);
+            utterance.lang = 'zh-CN';
+            utterance.rate = 0.85; // 稍微放慢，古诗朗读更有味道
+
+            const voice = pickChineseVoice();
+            if (voice) utterance.voice = voice;
+
+            utterance.onend = () => stopReading();
+            utterance.onerror = () => stopReading();
+
+            currentBtn = btn;
+            btn.classList.add('reading');
+            synth.speak(utterance);
+          });
+        });
+
+        // Chrome 等浏览器第一次加载时语音列表是异步返回的，提前触发一次
+        if (synth.getVoices().length === 0) {
+          synth.addEventListener('voiceschanged', () => synth.getVoices(), { once: true });
+        }
+
+        // 滑动切换诗页时，停掉正在朗读的内容，避免声音和画面对不上
+        scrollEl.addEventListener('scroll', () => {
+          if (currentBtn) stopReading();
+        });
+      }
     })();
-</script>
+  </script>
 </body>
 </html>
