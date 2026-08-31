@@ -33,6 +33,12 @@ const allPoems = rawPoems.map((poem, i) => ({
         window.visualViewport.addEventListener('resize', setViewportVars);
         window.visualViewport.addEventListener('scroll', setViewportVars);
       }
+      // 页面刚开始解析时，浏览器可能还没最终确定好地址栏/系统导航条占用的空间，
+      // 这时测出来的高度会偏大。等页面完全加载、以及再晚一点点之后，各补测一次，
+      // 把初始测量不准的问题纠正过来（这类"首次测量偏差"在 Android 上比较常见）。
+      window.addEventListener('load', setViewportVars);
+      setTimeout(setViewportVars, 300);
+      setTimeout(setViewportVars, 1000);
     })();
   </script>
   <style>
