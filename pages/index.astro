@@ -185,7 +185,7 @@ const allPoems = rawPoems.map((poem, i) => ({
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       padding-left: 6px;
       border-left: 1px solid var(--seal-dim);
     }
@@ -195,10 +195,16 @@ const allPoems = rawPoems.map((poem, i) => ({
       font-weight: 600;
       text-shadow: 0 2px 10px rgba(0,0,0,0.6);
     }
+    /* 作者 · 体裁：换成米白色文字 + 半透明深色胶囊底，
+       不管压在多亮/多花的背景图上，对比度都是稳定的，不再依赖图片本身的颜色 */
     .scroll-panel .title-block .meta {
-      font-size: 0.85rem;
-      color: var(--seal);
-      opacity: 0.9;
+      font-size: 0.8rem;
+      color: #f4e9d6;
+      letter-spacing: 0.08em;
+      background: rgba(20, 22, 28, 0.6);
+      padding: 10px 6px;
+      border-radius: 999px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(244,233,214,0.18);
     }
 
     /* ---------- 右下角搜索按钮 ---------- */
