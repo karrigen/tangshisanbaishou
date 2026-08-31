@@ -2,6 +2,5 @@ import { defineConfig } from 'astro/config';
 
 export default defineConfig({
   output: 'static',
-  // 指定页面文件直接存放在根目录
-  srcDir: '.',
+  // srcDir 不再需要覆盖，默认就是 './src'
 });
