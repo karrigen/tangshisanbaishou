@@ -21,13 +21,8 @@ const allPoems = rawPoems.map((poem, i) => ({
     (function () {
       function setViewportVars() {
         var vv = window.visualViewport;
-        // 手势导航（无实体/虚拟导航条，用悬浮手势条覆盖）模式下，
-        // visualViewport 会比真实可贴边渲染的高度报得更保守、偏小，
-        // 而 window.innerWidth/innerHeight 在这种模式下更贴近真实可视边界。
-        // 两者取较大值：三大金刚键设备两者本来就相等，取最大值无副作用；
-        // 手势导航设备则能拿回被 visualViewport 多裁掉的那一截。
-        var w = Math.max(window.innerWidth, vv ? vv.width : 0);
-        var h = Math.max(window.innerHeight, vv ? vv.height : 0);
+        var w = vv ? vv.width : window.innerWidth;
+        var h = vv ? vv.height : window.innerHeight;
         document.documentElement.style.setProperty('--vvw', w + 'px');
         document.documentElement.style.setProperty('--vvh', h + 'px');
       }
@@ -38,29 +33,6 @@ const allPoems = rawPoems.map((poem, i) => ({
         window.visualViewport.addEventListener('resize', setViewportVars);
         window.visualViewport.addEventListener('scroll', setViewportVars);
       }
-      // 页面刚开始解析时，浏览器可能还没最终确定好地址栏/系统导航条占用的空间，
-      // 这时测出来的高度会偏大。等页面完全加载、以及再晚一点点之后，各补测一次，
-      // 把初始测量不准的问题纠正过来（这类"首次测量偏差"在 Android 上比较常见）。
-      window.addEventListener('load', setViewportVars);
-      setTimeout(setViewportVars, 300);
-      setTimeout(setViewportVars, 1000);
-
-      // ===== 临时调试：把关键尺寸数值显示在屏幕上，方便排查缝隙问题 =====
-      // 排查完之后把这一段连同下面 HTML 里的 #debugBox 一起删掉即可
-      function updateDebugBox() {
-        var box = document.getElementById('debugBox');
-        if (!box) return;
-        var vv = window.visualViewport;
-        box.textContent =
-          'innerWH: ' + window.innerWidth + 'x' + window.innerHeight + '\n' +
-          'visualViewport: ' + (vv ? vv.width.toFixed(1) + 'x' + vv.height.toFixed(1) : '不支持') + '\n' +
-          'clientWH: ' + document.documentElement.clientWidth + 'x' + document.documentElement.clientHeight + '\n' +
-          'screenWH: ' + window.screen.width + 'x' + window.screen.height + '\n' +
-          'devicePixelRatio: ' + window.devicePixelRatio + '\n' +
-          '--vvh 当前值: ' + getComputedStyle(document.documentElement).getPropertyValue('--vvh');
-      }
-      window.addEventListener('load', function () { setTimeout(updateDebugBox, 1200); });
-      setInterval(updateDebugBox, 500);
     })();
   </script>
   <style>
@@ -423,7 +395,6 @@ const allPoems = rawPoems.map((poem, i) => ({
 </head>
 <body>
 
-  <div id="debugBox" style="position:fixed;top:0;left:0;z-index:9999;background:rgba(0,255,0,0.85);color:#000;font:11px monospace;padding:6px 8px;white-space:pre;pointer-events:none;"></div>
   <div class="stage">
     <div class="backdrop" id="backdrop"></div>
     <div class="frame">
