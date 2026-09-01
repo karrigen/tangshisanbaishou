@@ -21,8 +21,13 @@ const allPoems = rawPoems.map((poem, i) => ({
     (function () {
       function setViewportVars() {
         var vv = window.visualViewport;
-        var w = vv ? vv.width : window.innerWidth;
-        var h = vv ? vv.height : window.innerHeight;
+        // 手势导航（无实体/虚拟导航条，用悬浮手势条覆盖）模式下，
+        // visualViewport 会比真实可贴边渲染的高度报得更保守、偏小，
+        // 而 window.innerWidth/innerHeight 在这种模式下更贴近真实可视边界。
+        // 两者取较大值：三大金刚键设备两者本来就相等，取最大值无副作用；
+        // 手势导航设备则能拿回被 visualViewport 多裁掉的那一截。
+        var w = Math.max(window.innerWidth, vv ? vv.width : 0);
+        var h = Math.max(window.innerHeight, vv ? vv.height : 0);
         document.documentElement.style.setProperty('--vvw', w + 'px');
         document.documentElement.style.setProperty('--vvh', h + 'px');
       }
