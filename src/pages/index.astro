@@ -464,6 +464,20 @@ const allPoems = rawPoems.map((poem, i) => ({
   <script is:inline>
     (function () {
       const scrollEl = document.getElementById('poemScroll');
+
+      // ---- 打乱诗页顺序：每次刷新页面都是随机顺序，不再按标题固定排序 ----
+      {
+        const sections = Array.from(scrollEl.querySelectorAll('.poem-page'));
+        for (let i = sections.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [sections[i], sections[j]] = [sections[j], sections[i]];
+        }
+        sections.forEach((section) => scrollEl.appendChild(section));
+
+        const firstImg = sections[0]?.querySelector('.bg');
+        if (firstImg) firstImg.loading = 'eager';
+      }
+
       const pages = Array.from(document.querySelectorAll('.poem-page'));
       const backdrop = document.getElementById('backdrop');
       const fab = document.getElementById('searchFab');
