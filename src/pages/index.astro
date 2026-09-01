@@ -401,7 +401,11 @@ const poemsMeta = allPoems.map((p) => ({
       scroll-snap-align: start;
       scroll-snap-stop: always;
       overflow: hidden;
-      background: #0b0d10; /* 与 body 背景一致 */
+      background:
+        radial-gradient(circle at 18% 12%, rgba(255, 214, 130, 0.22), transparent 42%),
+        radial-gradient(circle at 85% 8%, rgba(255, 110, 130, 0.18), transparent 38%),
+        radial-gradient(circle at 50% 100%, rgba(255, 180, 90, 0.12), transparent 55%),
+        linear-gradient(165deg, #150a24 0%, #34103a 42%, #6e1b3f 72%, #23091c 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -414,22 +418,108 @@ const poemsMeta = allPoems.map((p) => ({
       align-items: center;
       text-align: center;
       width: 100%;
-      max-width: 420px;
-      padding: 32px 24px;
+      max-width: 440px;
+      padding: 32px 22px;
       max-height: 100%;
       overflow-y: auto;
       scrollbar-width: none;
     }
     .home-content::-webkit-scrollbar { display: none; }
     .home-title {
-      font-size: clamp(1.9rem, 8vw, 2.5rem);
-      letter-spacing: 0.3em;
-      margin: 6vh 0 34px;
-      color: var(--seal);
-      text-shadow: 0 2px 12px rgba(0,0,0,0.5);
+      font-size: clamp(2rem, 8.5vw, 2.7rem);
+      letter-spacing: 0.28em;
+      margin: 5vh 0 30px;
+      font-weight: 700;
+      background: linear-gradient(180deg, #fff4d6 0%, #f4cf6e 35%, #c9962f 70%, #8a611b 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 2px 18px rgba(244, 207, 110, 0.35));
     }
+
+    /* 领奖台：前三名 */
+    .podium {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      margin-bottom: 26px;
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+    .podium-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 33%;
+      min-width: 0;
+      cursor: pointer;
+    }
+    .podium-item.rank-1 { order: 2; }
+    .podium-item.rank-2 { order: 1; }
+    .podium-item.rank-3 { order: 3; }
+    .podium-crown { font-size: 1.3rem; margin-bottom: 2px; filter: drop-shadow(0 0 6px rgba(255,214,90,0.6)); }
+    .podium-medal {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-weight: 800;
+      font-size: 1.3rem;
+      color: #2a1806;
+    }
+    .rank-1 .podium-medal {
+      width: 68px; height: 68px;
+      background: linear-gradient(155deg, #fff3c4, #f6c744 55%, #b8860b);
+      box-shadow: 0 0 0 3px rgba(244,207,110,0.25), 0 6px 18px rgba(244,207,110,0.35);
+    }
+    .rank-2 .podium-medal {
+      width: 54px; height: 54px;
+      margin-bottom: 14px;
+      background: linear-gradient(155deg, #f4f6fa, #c3c9d6 55%, #8a92a3);
+      box-shadow: 0 4px 14px rgba(180,190,205,0.3);
+    }
+    .rank-3 .podium-medal {
+      width: 54px; height: 54px;
+      margin-bottom: 14px;
+      background: linear-gradient(155deg, #f3c79a, #cd8a4e 55%, #915f2c);
+      box-shadow: 0 4px 14px rgba(205,138,78,0.3);
+    }
+    .podium-item .p-title {
+      margin-top: 10px;
+      font-size: 0.95rem;
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #fdf6e3;
+    }
+    .rank-1 .p-title { font-size: 1.12rem; font-weight: 700; color: #ffe9ac; }
+    .podium-item .p-count {
+      margin-top: 3px;
+      font-size: 0.78rem;
+      color: rgba(253,246,227,0.55);
+      font-variant-numeric: tabular-nums;
+    }
+    .podium-item .p-stand {
+      width: 100%;
+      margin-top: 10px;
+      border-radius: 8px 8px 0 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: rgba(253,246,227,0.6);
+    }
+    .rank-1 .p-stand { height: 46px; background: linear-gradient(180deg, rgba(246,199,68,0.28), rgba(246,199,68,0.06)); }
+    .rank-2 .p-stand { height: 32px; background: linear-gradient(180deg, rgba(195,201,214,0.24), rgba(195,201,214,0.05)); }
+    .rank-3 .p-stand { height: 24px; background: linear-gradient(180deg, rgba(205,138,78,0.24), rgba(205,138,78,0.05)); }
+
+    /* 4-10 名列表 */
     .top-likes {
       width: 100%;
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
     }
     .top-likes-list {
       list-style: none;
@@ -439,10 +529,10 @@ const poemsMeta = allPoems.map((p) => ({
     }
     .top-likes-list li {
       display: grid;
-      grid-template-columns: 2.2em 1fr auto;
+      grid-template-columns: 2em 1fr auto;
       align-items: center;
-      gap: 10px;
-      padding: 9px 4px;
+      gap: 12px;
+      padding: 10px 6px;
       border-bottom: 1px solid rgba(255,255,255,0.08);
       font-size: 0.92rem;
       cursor: pointer;
@@ -451,34 +541,29 @@ const poemsMeta = allPoems.map((p) => ({
     .top-likes-list .rank {
       text-align: center;
       font-weight: 700;
-      color: rgba(242,237,225,0.45);
+      color: rgba(253,246,227,0.4);
     }
     .top-likes-list .r-title {
       display: block;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      color: #fdf6e3;
     }
     .top-likes-list .r-count {
       text-align: right;
       font-variant-numeric: tabular-nums;
-      opacity: 0.85;
+      color: rgba(253,246,227,0.55);
     }
-    /* 前三名：彩色 + 更大字体 */
-    .top-likes-list li[data-rank="1"] { font-size: 1.25rem; color: #f4c94a; }
-    .top-likes-list li[data-rank="1"] .rank { color: #f4c94a; }
-    .top-likes-list li[data-rank="2"] { font-size: 1.15rem; color: #d7dbe3; }
-    .top-likes-list li[data-rank="2"] .rank { color: #d7dbe3; }
-    .top-likes-list li[data-rank="3"] { font-size: 1.08rem; color: #d99a5b; }
-    .top-likes-list li[data-rank="3"] .rank { color: #d99a5b; }
     .top-likes-status {
       opacity: 0.5;
       font-size: 0.85rem;
       padding: 10px 0;
       text-align: center;
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
     }
     .scroll-hint {
-      margin: 28px 0 4vh;
+      margin: 30px 0 4vh;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -486,11 +571,13 @@ const poemsMeta = allPoems.map((p) => ({
       opacity: 0.85;
       font-size: 0.85rem;
       letter-spacing: 0.15em;
+      color: #fdf6e3;
+      font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
     }
     .scroll-hint svg {
       width: 22px;
       height: 22px;
-      stroke: var(--paper);
+      stroke: #fdf6e3;
       fill: none;
       stroke-width: 2;
       animation: bounce 1.6s ease-in-out infinite;
@@ -518,6 +605,8 @@ const poemsMeta = allPoems.map((p) => ({
         <section class="home-page" id="homePage">
           <div class="home-content">
             <h1 class="home-title">唐诗三百首</h1>
+
+            <div class="podium" id="podium"></div>
 
             <div class="top-likes">
               <ol class="top-likes-list" id="topLikesList">
@@ -803,10 +892,11 @@ const poemsMeta = allPoems.map((p) => ({
         });
       }
 
-      // ---- 首页封面：Top 10 点赞排行榜 ----
+      // ---- 首页封面：Top 10 点赞排行榜（前三名领奖台 + 4-10 名列表） ----
       function renderTopLikes(counts) {
+        const podiumEl = document.getElementById('podium');
         const listEl = document.getElementById('topLikesList');
-        if (!listEl) return;
+        if (!listEl || !podiumEl) return;
 
         let metaList = [];
         try {
@@ -816,6 +906,7 @@ const poemsMeta = allPoems.map((p) => ({
         }
 
         if (!counts) {
+          podiumEl.innerHTML = '';
           listEl.innerHTML = '<li class="top-likes-status">榜单加载失败</li>';
           return;
         }
@@ -827,33 +918,58 @@ const poemsMeta = allPoems.map((p) => ({
           .slice(0, 10);
 
         if (ranked.length === 0) {
+          podiumEl.innerHTML = '';
           listEl.innerHTML = '<li class="top-likes-status">暂无点赞，快去为喜欢的诗点亮爱心吧</li>';
           return;
         }
 
-        listEl.innerHTML = ranked
+        const jumpTo = (title) => {
+          const target = pages.find((p) => p.dataset.title === title);
+          if (target) {
+            currentIndex = pages.indexOf(target);
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        };
+
+        const top3 = ranked.slice(0, 3);
+        const rest = ranked.slice(3);
+
+        podiumEl.innerHTML = top3
           .map((poem, i) => {
             const rank = i + 1;
+            const crown = rank === 1 ? '<div class="podium-crown">👑</div>' : '';
             return (
-              '<li data-jump-title="' + poem.title + '" data-rank="' + rank + '">' +
-              '<span class="rank">' + rank + '</span>' +
-              '<span class="r-title">' + poem.title + '</span>' +
-              '<span class="r-count">' + poem.count + '</span>' +
-              '</li>'
+              '<div class="podium-item rank-' + rank + '" data-jump-title="' + poem.title + '">' +
+              crown +
+              '<div class="podium-medal">' + rank + '</div>' +
+              '<div class="p-title">' + poem.title + '</div>' +
+              '<div class="p-count">' + poem.count + '</div>' +
+              '<div class="p-stand"></div>' +
+              '</div>'
             );
           })
           .join('');
 
-        // 点击排行榜条目直接跳转到对应诗页
+        listEl.innerHTML = rest.length
+          ? rest
+              .map((poem, i) => {
+                const rank = i + 4;
+                return (
+                  '<li data-jump-title="' + poem.title + '">' +
+                  '<span class="rank">' + rank + '</span>' +
+                  '<span class="r-title">' + poem.title + '</span>' +
+                  '<span class="r-count">' + poem.count + '</span>' +
+                  '</li>'
+                );
+              })
+              .join('')
+          : '';
+
+        podiumEl.querySelectorAll('[data-jump-title]').forEach((el) => {
+          el.addEventListener('click', () => jumpTo(el.dataset.jumpTitle));
+        });
         listEl.querySelectorAll('li[data-jump-title]').forEach((li) => {
-          li.addEventListener('click', () => {
-            const title = li.dataset.jumpTitle;
-            const target = pages.find((p) => p.dataset.title === title);
-            if (target) {
-              currentIndex = pages.indexOf(target);
-              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-          });
+          li.addEventListener('click', () => jumpTo(li.dataset.jumpTitle));
         });
       }
 
