@@ -401,7 +401,7 @@ const poemsMeta = allPoems.map((p) => ({
       scroll-snap-align: start;
       scroll-snap-stop: always;
       overflow: hidden;
-      background: radial-gradient(ellipse at top, #232a34 0%, #0b0d10 72%);
+      background: #0b0d10; /* 与 body 背景一致 */
       display: flex;
       align-items: center;
       justify-content: center;
@@ -424,29 +424,12 @@ const poemsMeta = allPoems.map((p) => ({
     .home-title {
       font-size: clamp(1.9rem, 8vw, 2.5rem);
       letter-spacing: 0.3em;
-      margin: 6vh 0 4px;
+      margin: 6vh 0 34px;
       color: var(--seal);
       text-shadow: 0 2px 12px rgba(0,0,0,0.5);
     }
-    .home-subtitle {
-      margin: 0 0 30px;
-      letter-spacing: 0.4em;
-      opacity: 0.7;
-      font-size: 0.9rem;
-    }
     .top-likes {
       width: 100%;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(201,162,39,0.3);
-      border-radius: 14px;
-      padding: 16px 18px 6px;
-    }
-    .top-likes h2 {
-      font-size: 0.95rem;
-      letter-spacing: 0.2em;
-      margin: 0 0 10px;
-      color: var(--seal);
-      font-weight: 500;
     }
     .top-likes-list {
       list-style: none;
@@ -455,40 +438,39 @@ const poemsMeta = allPoems.map((p) => ({
       text-align: left;
     }
     .top-likes-list li {
-      display: flex;
+      display: grid;
+      grid-template-columns: 2.2em 1fr auto;
       align-items: center;
       gap: 10px;
-      padding: 8px 0;
+      padding: 9px 4px;
       border-bottom: 1px solid rgba(255,255,255,0.08);
       font-size: 0.92rem;
       cursor: pointer;
     }
     .top-likes-list li:last-child { border-bottom: none; }
     .top-likes-list .rank {
-      width: 1.5em;
       text-align: center;
       font-weight: 700;
-      color: var(--seal-dim);
-      flex-shrink: 0;
+      color: rgba(242,237,225,0.45);
     }
-    .top-likes-list li:nth-child(-n+3) .rank { color: var(--seal); }
-    .top-likes-list .r-name { flex: 1; min-width: 0; }
     .top-likes-list .r-title {
       display: block;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
-    .top-likes-list .r-author { opacity: 0.55; font-size: 0.78rem; }
-    .top-likes-list .r-heart {
-      display: flex;
-      align-items: center;
-      gap: 3px;
-      color: #e0455f;
-      font-size: 0.85rem;
-      flex-shrink: 0;
+    .top-likes-list .r-count {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      opacity: 0.85;
     }
-    .top-likes-list .r-heart svg { width: 13px; height: 13px; fill: #e0455f; }
+    /* 前三名：彩色 + 更大字体 */
+    .top-likes-list li[data-rank="1"] { font-size: 1.25rem; color: #f4c94a; }
+    .top-likes-list li[data-rank="1"] .rank { color: #f4c94a; }
+    .top-likes-list li[data-rank="2"] { font-size: 1.15rem; color: #d7dbe3; }
+    .top-likes-list li[data-rank="2"] .rank { color: #d7dbe3; }
+    .top-likes-list li[data-rank="3"] { font-size: 1.08rem; color: #d99a5b; }
+    .top-likes-list li[data-rank="3"] .rank { color: #d99a5b; }
     .top-likes-status {
       opacity: 0.5;
       font-size: 0.85rem;
@@ -536,10 +518,8 @@ const poemsMeta = allPoems.map((p) => ({
         <section class="home-page" id="homePage">
           <div class="home-content">
             <h1 class="home-title">唐诗三百首</h1>
-            <p class="home-subtitle">诗 画 卷</p>
 
             <div class="top-likes">
-              <h2>最受喜爱 · Top 10</h2>
               <ol class="top-likes-list" id="topLikesList">
                 <li class="top-likes-status" id="topLikesStatus">加载中...</li>
               </ol>
@@ -853,17 +833,12 @@ const poemsMeta = allPoems.map((p) => ({
 
         listEl.innerHTML = ranked
           .map((poem, i) => {
+            const rank = i + 1;
             return (
-              '<li data-jump-title="' + poem.title + '">' +
-              '<span class="rank">' + (i + 1) + '</span>' +
-              '<span class="r-name">' +
+              '<li data-jump-title="' + poem.title + '" data-rank="' + rank + '">' +
+              '<span class="rank">' + rank + '</span>' +
               '<span class="r-title">' + poem.title + '</span>' +
-              '<span class="r-author">' + poem.author + '</span>' +
-              '</span>' +
-              '<span class="r-heart">' +
-              '<svg viewBox="0 0 24 24"><path d="M12 21s-6.7-4.3-9.3-8.2C1 10.1 1.5 6.8 4 5.1c2-1.4 4.6-1 6.2.9.6.7 1.1 1.5 1.8 1.5s1.2-.8 1.8-1.5c1.6-1.9 4.2-2.3 6.2-.9 2.5 1.7 3 5 1.3 7.7C18.7 16.7 12 21 12 21z"/></svg>' +
-              poem.count +
-              '</span>' +
+              '<span class="r-count">' + poem.count + '</span>' +
               '</li>'
             );
           })
